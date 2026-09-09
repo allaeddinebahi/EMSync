@@ -1,7 +1,4 @@
-/*
- * Multi-threaded 1kHz-like I/O stressor using fsync()
- * Simulates stress-ng --io N behavior (per-thread file)
- */
+
 
 #define _GNU_SOURCE
 

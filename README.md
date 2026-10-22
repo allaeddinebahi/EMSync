@@ -2,7 +2,7 @@
 
 This repository contains the Python source codes used in the EMSync EM covert channel attack. For full technical details, please refer to the paper:
 
-M. A. E. Bahi, M. Mendez Real, E. Nogues, and M. Pelcat, "EMSync: An In-Board EM Covert Channel Attack That Circumvents EMC Protection," 2026 International Symposium on Electromagnetic Compatibility – EMC Europe, Prague, Czeach Republique, 2026
+M. A. E. Bahi, M. M. Real, E. Nogues and M. Pelcat, "EMSync: An In-Board EM Covert Channel Attack that Circumvents EMC Protection," 2026 International Symposium on Electromagnetic Compatibility – EMC Europe, Prague, Czech Republic, 2026, pp. 1-6, doi: 10.1109/EMCEurope65281.2026.11733118.
 
 
 **EMSync** is a research implementation of an in-board EM covert channel between logically and physically isolated processes running on the same computer system.

@@ -346,7 +346,7 @@ Only positive frequencies are retained and converted to kHz.
 The receiver calculates the total spectral power in:
 
 ```text
-17–25 kHz
+17–20 kHz
 ```
 
 The magnitude spectrum is squared to obtain a quantity proportional to power.

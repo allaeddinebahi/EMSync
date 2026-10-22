@@ -20,10 +20,10 @@ def plot_wav_windowed_power(wav_file_path,
     """
 
     # === Reference pattern ===
-    ref_binary = "1010110100110100110100101110101000100110011110001111010100011010110010110100111011110011010011000011011010001110"
+    ref_binary = "10001011110010101110111100111011000100101101101000010111000110010111000001000011101000110100111001100110010010101101011011101101"
 
     # === Load audio ===
-    full_duration = librosa.get_duration(filename=wav_file_path)
+    full_duration = librosa.get_duration(path=wav_file_path)
     max_duration_seconds = max_duration_minutes * 60
 
     if full_duration > max_duration_seconds:
@@ -72,7 +72,7 @@ def plot_wav_windowed_power(wav_file_path,
     segments_fft = []
     segments_freqs = []
     segment_info = []
-    segment_power_17_25khz = []  # Store power in 17-25 kHz region
+    segment_power_17_20khz = []  # Store power in 17-20 kHz region
     binary_array = []  # Store binary values
     
     for i in range(len(vertical_line_times_seconds) - 1):
@@ -109,11 +109,11 @@ def plot_wav_windowed_power(wav_file_path,
             segments_fft.append(yf_magnitude)
             segments_freqs.append(xf_pos)
             
-            # Calculate power in 17-25 kHz region
-            mask_17_25 = (xf_pos >= 17) & (xf_pos <= 25)
-            if np.any(mask_17_25):
+            # Calculate power in 17-20 kHz region
+            mask_17_20 = (xf_pos >= 17) & (xf_pos <= 20)
+            if np.any(mask_17_20):
                 # Power is proportional to square of magnitude
-                power_in_region = np.sum(yf_magnitude[mask_17_25]**2)
+                power_in_region = np.sum(yf_magnitude[mask_17_20]**2)
                 power_dB_in_region = 10 * np.log10(power_in_region + 1e-10)
             else:
                 power_in_region = 0
@@ -127,7 +127,7 @@ def plot_wav_windowed_power(wav_file_path,
             
             binary_array.append(binary_value)
             
-            segment_power_17_25khz.append({
+            segment_power_17_20khz.append({
                 'power_dB': power_dB_in_region,
                 'binary': binary_value
             })
@@ -145,7 +145,7 @@ def plot_wav_windowed_power(wav_file_path,
             segments_fft.append(None)
             segments_freqs.append(None)
             segment_info.append(None)
-            segment_power_17_25khz.append({'power_dB': -np.inf, 'binary': 0})
+            segment_power_17_20khz.append({'power_dB': -np.inf, 'binary': 0})
             binary_array.append(0)
             print(f"Segment {i+1}: {start_time:.1f}s to {end_time:.1f}s (empty segment) → Bit: 0")
 
@@ -187,7 +187,7 @@ def plot_wav_windowed_power(wav_file_path,
     power_dB_values = []
     colors = []
     
-    for i, power_info in enumerate(segment_power_17_25khz):
+    for i, power_info in enumerate(segment_power_17_20khz):
         if power_info is not None and i < len(ref_binary):
             segment_numbers.append(i + 1)
             power_dB_values.append(power_info['power_dB'])
@@ -204,7 +204,7 @@ def plot_wav_windowed_power(wav_file_path,
     
     plt.xlabel('Segment Number')
     plt.ylabel('Power (dB)')
-    plt.title(f'Power in 17-25 kHz Region with BER Analysis\nBER: {ber:.3f} ({errors}/{len(ref_binary)} errors)')
+    plt.title(f'Power in 17-20 kHz Region with BER Analysis\nBER: {ber:.3f} ({errors}/{len(ref_binary)} errors)')
     plt.grid(True, alpha=0.3)
     plt.legend()
 
@@ -240,7 +240,7 @@ def plot_wav_windowed_power(wav_file_path,
     print("Segment | Time Range (s) | Power (dB) | Received | Reference | Status")
     print("-" * 75)
     
-    for i, (power_info, seg_info) in enumerate(zip(segment_power_17_25khz, segment_info)):
+    for i, (power_info, seg_info) in enumerate(zip(segment_power_17_20khz, segment_info)):
         if power_info is not None and seg_info is not None and i < len(ref_binary):
             ref_bit_int = int(ref_binary[i])
             status = "✓ MATCH" if power_info['binary'] == ref_bit_int else "✗ ERROR"
@@ -251,7 +251,7 @@ def plot_wav_windowed_power(wav_file_path,
 
 # === Usage Example ===
 if __name__ == "__main__":
-    wav_file_path = "t_data/f2.wav"
+    wav_file_path = "data/f2.wav"
     plot_wav_windowed_power(wav_file_path, 
                           window_ms=50, 
                           hop_ms=25, 

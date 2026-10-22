@@ -12,10 +12,24 @@ The project implements both sides of the communication channel:
 - **Transmitter (Tx):** encodes binary data by controlling filesystem synchronization activity through repeated `write()` and `fsync()` operations.
 - **Receiver (Rx):** analyzes an audio recording, extracts spectral power in the target frequency range, and reconstructs the transmitted binary sequence.
 
-This repository contains the implementation used to experiment with the EMSync communication mechanism described in the associated research work.
+The repository also includes two **sample recordings** (`data/f1.wav` and `data/f2.wav`) so that the receiver can be tested without repeating the experiment. See [Sample Data](#sample-data).
 
 > **Research / educational use only.**  
 > This repository is intended for authorized security research, experimentation, and academic purposes. Do not use it to access, interfere with, or communicate through systems without authorization.
+
+
+# Repository Contents
+
+```text
+EMSync/
+├── README.md
+├── Tx.py          # transmitter: controls the timing of each bit
+├── stress-io.c    # transmitter: multithreaded write() + fsync() load
+├── Rx.py          # receiver: WAV → spectral power → bits → BER
+└── data/
+    ├── f1.wav     # sample recording, quiet environment
+    └── f2.wav     # sample recording, noisy environment
+```
 
 
 # Overview
@@ -90,6 +104,61 @@ The communication chain can be summarized as:
 
 ```
 
+
+---
+
+# Sample Data
+
+The `data/` folder contains two recordings of the same transmission, captured under different acoustic conditions. They let you run the receiver (`Rx.py`) and reproduce the decoding without repeating the hardware experiment.
+
+| File | Environment | Description |
+|---|---|---|
+| `data/f1.wav` | Quiet | Recorded in a quiet environment, with no audio playback. |
+| `data/f2.wav` | Noisy | Recorded while audio was being played. The first track was *Amazing Grace*, played from YouTube. |
+
+Both files share the same recording format:
+
+| Property | Value |
+|---|---|
+| Sample format | Signed 16-bit, little-endian |
+| Sampling rate | 48,000 Hz |
+| Channels | Stereo (2 channels) |
+
+`librosa.load` converts stereo recordings to mono by default, so no manual channel selection is needed.
+
+## Transmitted message
+
+In both recordings, the transmitted message is the following 128-bit AES key:
+
+```text
+8BCAEF3B12DA17197043A34E664AD6ED
+```
+
+Each hexadecimal digit is sent as four bits, most significant bit first, giving 128 bits in total. The reference bit sequence used by the receiver is:
+
+```text
+10001011110010101110111100111011000100101101101000010111000110010111000001000011101000110100111001100110010010101101011011101101
+```
+
+At 12.5 s per bit, the transmission lasts 128 × 12.5 s = 1,600 s (about 26.7 minutes). The receiver expects the first symbol to start 30 s into each recording, so the recordings begin 30 s before the transmission starts.
+
+## Running the receiver on the sample data
+
+1. Install the receiver dependencies (see [Dependencies](#dependencies)).
+2. Open `Rx.py` and set the recording to decode:
+
+```python
+wav_file_path = "data/f1.wav"   # quiet environment
+# wav_file_path = "data/f2.wav" # noisy environment
+```
+
+3. Run the receiver from the repository root:
+
+```bash
+python3 Rx.py
+```
+
+The receiver prints the received and reference bit sequences, the bit error positions and the BER, and displays the two diagnostic plots described in [Receiver Output](#receiver-output).
 
 ---
 
@@ -203,7 +272,7 @@ The transmitter waits until the configured start time.
 The receiver is implemented in:
 
 ```text
-receiver/Rx.py
+Rx.py
 ```
 
 The receiver processes a WAV recording containing the captured signal.
@@ -382,12 +451,18 @@ Segment → Power ────┤
 
 # Running the Receiver
 
-Place the WAV recording in the expected location, for example:
+Choose the recording to decode, for example one of the sample recordings in `data/`:
 
 ```text
-receiver/
-└── t_data/
-    └── f2.wav
+data/
+├── f1.wav   # quiet environment
+└── f2.wav   # noisy environment
+```
+
+Set the path in `Rx.py`:
+
+```python
+wav_file_path = "data/f1.wav"
 ```
 
 Then run:
@@ -396,13 +471,7 @@ Then run:
 python3 Rx.py
 ```
 
-Alternatively, modify:
-
-```python
-wav_file_path = "t_data/f2.wav"
-```
-
-to point to the desired recording.
+To decode your own recording, point `wav_file_path` to it. The recording must start 30 s before the transmission begins (see [Timing synchronization](#5-timing-synchronization)).
 
 ---
 
@@ -426,7 +495,7 @@ This provides a time-domain view of the captured signal.
 
 ## Plot 2 — Frequency-Band Power and BER
 
-The second plot displays the calculated power for every transmission segment in the 17–25 kHz frequency range.
+The second plot displays the calculated power for every transmission segment in the 17–20 kHz frequency range.
 
 It also displays:
 
@@ -441,13 +510,17 @@ Segments are visually distinguished according to whether their decoded bit match
 
 # Binary Encoding
 
-The current implementation uses the following reference binary pattern:
+The reference sequence is the 128-bit AES key used in the sample recordings:
 
 ```text
-1010110100110100110100101110101000100110011110001111010100011010110010110100111011110011010011000011011010001110
+Key (hex): 8BCAEF3B12DA17197043A34E664AD6ED
 ```
 
-The same reference pattern is currently embedded in both the transmitter and receiver.
+```text
+Bits:      10001011110010101110111100111011000100101101101000010111000110010111000001000011101000110100111001100110010010101101011011101101
+```
+
+The same reference pattern is embedded in the receiver (`Rx.py`). The transmitter (`Tx.py`) must use the same pattern when you repeat the experiment.
 
 The receiver uses this pattern to evaluate the accuracy of the recovered sequence.
 
@@ -469,7 +542,7 @@ The receiver performs the inverse operation:
 Captured segment
        │
        ▼
-17–25 kHz power
+17–20 kHz power
        │
        ▼
 Compare with -82 dB
@@ -567,25 +640,7 @@ pip install librosa matplotlib numpy scipy
 
 # Important Configuration Notes
 
-## 1. Executable name
-
-The transmitter executable is:
-
-```text
-stress-io
-```
-
-not:
-
-```text
-stress-io-ff
-```
-
-Make sure all scripts and documentation use the updated name.
-
----
-
-## 2. Executable path
+## 1. Executable path
 
 The current `Tx.py` contains a machine-specific path.
 
@@ -599,7 +654,7 @@ to the location of the locally compiled `stress-io` executable.
 
 ---
 
-## 3. Start time
+## 2. Start time
 
 The transmitter currently contains a fixed start time.
 
@@ -607,13 +662,19 @@ This value must be changed for a new experiment.
 
 ---
 
-## 4. Reference binary pattern
+## 3. Reference binary pattern
 
 The binary pattern is currently hard-coded.
 
 The transmitter and receiver should use the same reference pattern when performing BER analysis.
 
 If the transmitted pattern is changed, update both sides consistently.
+
+---
+
+## 4. Sampling rate and band
+
+The sample recordings use a sampling rate of 48 kHz, so the Nyquist frequency is 24 kHz. The receiver analyzes the 17–20 kHz band, which lies below the Nyquist frequency and above the typical audible range of standard audio content.
 
 ---
 
